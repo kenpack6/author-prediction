@@ -50,3 +50,8 @@ torchvision = [
     { index = "pytorch-cu124", extra = "cuda", marker = "sys_platform != 'darwin'" },
     { index = "pytorch-cu124", extra = "cu124", marker = "sys_platform != 'darwin'" },
 ]
+
+[dependency-groups]
+server = [
+    "fastapi>=0.141.1",
+]
