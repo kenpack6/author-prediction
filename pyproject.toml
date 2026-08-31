@@ -7,7 +7,9 @@ authors = [
     { name = "Kenneth Packard", email = "kenpack6@byu.edu" }
 ]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "deepstylometry",
+]
 
 [project.scripts]
 author-prediction = "author_prediction:main"
@@ -20,3 +22,6 @@ build-backend = "uv_build"
 members = [
     "DeepStylometry",
 ]
+
+[tool.uv.sources]
+deepstylometry = { workspace = true, editable = true }

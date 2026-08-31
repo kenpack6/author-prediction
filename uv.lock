@@ -267,6 +267,12 @@ wheels = [
 name = "author-prediction"
 version = "0.1.0"
 source = { editable = "." }
+dependencies = [
+    { name = "deepstylometry" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "deepstylometry", editable = "DeepStylometry" }]
 
 [[package]]
 name = "babe"
@@ -1033,7 +1039,7 @@ wheels = [
 [[package]]
 name = "deepstylometry"
 version = "0.1.0"
-source = { virtual = "DeepStylometry" }
+source = { editable = "DeepStylometry" }
 dependencies = [
     { name = "accelerate" },
     { name = "aiofiles" },
