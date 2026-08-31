@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Kenneth Packard", email = "kenpack6@byu.edu" }
 ]
-requires-python = "==3.11"
+requires-python = ">=3.11"
 dependencies = []
 
 [project.scripts]
@@ -15,3 +15,8 @@ author-prediction = "author_prediction:main"
 [build-system]
 requires = ["uv_build>=0.12.2,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv.workspace]
+members = [
+    "DeepStylometry",
+]
