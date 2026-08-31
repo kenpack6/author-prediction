@@ -54,4 +54,5 @@ torchvision = [
 [dependency-groups]
 server = [
     "fastapi>=0.141.1",
+    "uvicorn>=0.52.4",
 ]
