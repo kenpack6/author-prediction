@@ -11,6 +11,18 @@ dependencies = [
     "deepstylometry",
 ]
 
+[project.optional-dependencies]
+cuda = [
+    "torch",
+    "torchvision",
+    "deepstylometry[cuda]",
+]
+cu124 = [
+    "torch",
+    "torchvision",
+    "deepstylometry[cu124]",
+]
+
 [project.scripts]
 author-prediction = "author_prediction:main"
 
@@ -23,5 +35,18 @@ members = [
     "DeepStylometry",
 ]
 
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
 [tool.uv.sources]
 deepstylometry = { workspace = true, editable = true }
+torch = [
+    { index = "pytorch-cu124", extra = "cuda", marker = "sys_platform != 'darwin'" },
+    { index = "pytorch-cu124", extra = "cu124", marker = "sys_platform != 'darwin'" },
+]
+torchvision = [
+    { index = "pytorch-cu124", extra = "cuda", marker = "sys_platform != 'darwin'" },
+    { index = "pytorch-cu124", extra = "cu124", marker = "sys_platform != 'darwin'" },
+]
