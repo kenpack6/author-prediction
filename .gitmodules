@@ -1,0 +1,3 @@
+[submodule "DeepStylometry"]
+	path = DeepStylometry
+	url = https://github.com/josephgeis/DeepStylometry.git
