@@ -17,7 +17,7 @@ from author_prediction.reporting import format_run_summary, summarize_run
 from author_prediction.segmenter import split_into_sentences
 
 DATA_PATH = "src/author_prediction/data/bookofmormon.txt"
-MAX_CHARS: int | None = 100000
+MAX_CHARS: int | None = None
 MAX_SENTENCES: int | None = None
 
 
