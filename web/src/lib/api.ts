@@ -27,11 +27,17 @@ export interface SourceResponse {
   full_text: string
   processed_date: string | null
   project: number
+  authors: number[]
 }
 
 export interface SourceCreate {
   filename: string
   full_text: string
+}
+
+export interface AuthorResponse {
+  id: number
+  sources: number
 }
 
 export const api: AxiosInstance = axios.create({
@@ -84,7 +90,9 @@ export async function createSource(projectId: number, data: SourceCreate): Promi
   return response.data
 }
 
+export async function fetchAuthors(projectId: number): Promise<AuthorResponse[]> {
+  const response = await api.get<AuthorResponse[]>(`/projects/${projectId}/authors/`)
+  return response.data
+}
+
 export default api
-
-
-

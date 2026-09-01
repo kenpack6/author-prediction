@@ -5,6 +5,7 @@ import {
   fetchProject,
   fetchSources,
   fetchSource,
+  fetchAuthors,
   createSource,
   type SourceCreate,
 } from '../lib/api'
@@ -46,6 +47,16 @@ function ProjectDetailComponent() {
     enabled: !isNaN(pId),
   })
 
+  // Query authors list
+  const {
+    data: authors = [],
+    isLoading: loadingAuthors,
+  } = useQuery({
+    queryKey: ['authors', pId],
+    queryFn: () => fetchAuthors(pId),
+    enabled: !isNaN(pId),
+  })
+
   // Query selected source detail
   const {
     data: selectedSource,
@@ -66,11 +77,13 @@ function ProjectDetailComponent() {
       queryClient.invalidateQueries({ queryKey: ['sources', pId] })
       queryClient.invalidateQueries({ queryKey: ['projects', pId] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['authors', pId] })
       setSelectedSourceId(created.id)
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.error(err)
-      alert('Failed to create source')
+      const detail = err?.response?.data?.detail
+      alert(detail || 'Failed to create source')
     },
   })
 
@@ -146,10 +159,10 @@ function ProjectDetailComponent() {
         </button>
       </div>
 
-      {/* Main Two-Column Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-        {/* Sidebar: Sources List (4 cols) */}
-        <div className="md:col-span-4 bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-h-[500px]">
+      {/* Main Three-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Sidebar: Sources List (3 cols) */}
+        <div className="lg:col-span-3 bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-h-[500px]">
           <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
             <h2 className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
               Sources ({sources.length})
@@ -195,9 +208,8 @@ function ProjectDetailComponent() {
           </div>
         </div>
 
-
-        {/* Viewer Panel (8 cols) */}
-        <div className="md:col-span-8 bg-slate-950 border border-slate-800 rounded-xl overflow-hidden min-h-[500px] flex flex-col">
+        {/* Center Panel: Source Detail / Viewer (6 cols) */}
+        <div className="lg:col-span-6 bg-slate-950 border border-slate-800 rounded-xl overflow-hidden min-h-[500px] flex flex-col">
           {loadingSourceDetail ? (
             <div className="p-8 space-y-4 animate-pulse">
               <div className="h-6 bg-slate-800 rounded w-1/3"></div>
@@ -207,25 +219,52 @@ function ProjectDetailComponent() {
           ) : selectedSource ? (
             <div className="flex flex-col h-full">
               {/* Viewer Header */}
-              <div className="p-4 border-b border-slate-800 bg-slate-900/40 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-100 font-mono">
-                    {selectedSource.filename}
-                  </h3>
-                  <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
-                    <span>Source ID: #{selectedSource.id}</span>
-                    <span>•</span>
-                    <span>
-                      Status:{' '}
-                      {selectedSource.processed_date
-                        ? `Processed on ${new Date(selectedSource.processed_date).toLocaleString()}`
-                        : 'Unprocessed'}
-                    </span>
+              <div className="p-4 border-b border-slate-800 bg-slate-900/40 flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-100 font-mono">
+                      {selectedSource.filename}
+                    </h3>
+                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                      <span>Source ID: #{selectedSource.id}</span>
+                      <span>•</span>
+                      <span>
+                        Status:{' '}
+                        {selectedSource.processed_date
+                          ? `Processed on ${new Date(selectedSource.processed_date).toLocaleString()}`
+                          : 'Unprocessed'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 font-mono">
+                    {selectedSource.full_text.split(/\s+/).filter(Boolean).length} words |{' '}
+                    {selectedSource.full_text.length} chars
                   </div>
                 </div>
-                <div className="text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 font-mono">
-                  {selectedSource.full_text.split(/\s+/).filter(Boolean).length} words |{' '}
-                  {selectedSource.full_text.length} chars
+
+                {/* Associated Authors for Source */}
+                <div className="pt-2 border-t border-slate-800/60 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Associated Authors:
+                  </span>
+                  {selectedSource.authors && selectedSource.authors.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedSource.authors.map((authorId) => (
+                        <span
+                          key={authorId}
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-indigo-950 text-indigo-300 border border-indigo-800/60"
+                        >
+                          Author #{authorId}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-500 italic">
+                      {selectedSource.processed_date
+                        ? 'No authors associated with this source'
+                        : 'Unprocessed (authors will appear after inference)'}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -243,10 +282,56 @@ function ProjectDetailComponent() {
               </div>
               <h4 className="text-base font-medium text-slate-300">No Source Selected</h4>
               <p className="text-xs text-slate-500 max-w-sm mt-1">
-                Select a source file from the sidebar to inspect its text content.
+                Select a source file from the sidebar to inspect its text content and associated authors.
               </p>
             </div>
           )}
+        </div>
+
+        {/* Right Sidebar: Authors List (3 cols) */}
+        <div className="lg:col-span-3 bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-h-[500px]">
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+            <h2 className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+              Authors ({authors.length})
+            </h2>
+          </div>
+
+          <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60 max-h-[600px]">
+            {loadingAuthors ? (
+              <div className="p-4 space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="animate-pulse h-10 bg-slate-900 rounded"></div>
+                ))}
+              </div>
+            ) : authors.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-xs">
+                No authors detected yet. Authors will appear here once sources are processed.
+              </div>
+            ) : (
+              authors.map((author) => {
+                const isAssociatedWithSelected = selectedSource?.authors?.includes(author.id)
+                return (
+                  <div
+                    key={author.id}
+                    className={`p-3.5 flex items-center justify-between transition text-sm ${
+                      isAssociatedWithSelected
+                        ? 'bg-indigo-950/50 border-l-4 border-indigo-500 text-slate-100 font-medium'
+                        : 'hover:bg-slate-900/60 text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-slate-200">
+                        Author #{author.id}
+                      </span>
+                    </div>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
+                      {author.sources} {author.sources === 1 ? 'source' : 'sources'}
+                    </span>
+                  </div>
+                )
+              })
+            )}
+          </div>
         </div>
       </div>
 
@@ -334,4 +419,3 @@ function ProjectDetailComponent() {
     </div>
   )
 }
-

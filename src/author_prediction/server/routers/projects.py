@@ -2,10 +2,12 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from author_prediction.server.dependencies import DbConn
+from author_prediction.server.routers.authors import router as authors_router
 from author_prediction.server.routers.sources import router as sources_router
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 router.include_router(sources_router)
+router.include_router(authors_router)
 
 
 class ProjectCreate(BaseModel):
@@ -78,8 +80,7 @@ async def update_project(
     """Update a project by ID."""
     row = await db.fetchrow(
         """
-        WITH updated AS (
-            UPDATE projects
+        WITH updated AS (\n            UPDATE projects
             SET name = $1
             WHERE id = $2
             RETURNING id, name
@@ -103,4 +104,3 @@ async def delete_project(project_id: int, db: DbConn) -> None:
     result = await db.execute("DELETE FROM projects WHERE id = $1", project_id)
     if result == "DELETE 0":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-
