@@ -38,7 +38,7 @@ resemble each other through a distant intermediate.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -55,7 +55,8 @@ def _author_number(author_id: str) -> int:
 def merge_similar_profiles(
     tracker: AuthorProfileTracker,
     merge_threshold: float,
-) -> Dict[str, str]:
+    return_events: bool = False,
+):
     """Consolidate author profiles whose centroids converged to a similar
     direction, post-hoc.
 
@@ -84,15 +85,17 @@ def merge_similar_profiles(
             been processed with repeated ``tracker.step()`` calls.
         merge_threshold: Cosine similarity (tau_merge) at or above which
             two profiles are considered the same underlying author.
+        return_events: If true, also returns a list of merge events, each
+            containing the surviving author id, the merged-from author id,
+            the pair similarity, and the sample counts involved.
 
     Returns:
-        id_remap: mapping from every original author_id (as it existed
-        before this call) to the author_id it ends up under after
-        merging. Surviving authors map to themselves. Use
-        :func:`apply_id_remap` to relabel already-collected ``step()``
-        results with this.
+        If ``return_events`` is false: mapping from every original
+        author_id to the author_id it ends up under after merging.
+        If ``return_events`` is true: ``(id_remap, events)``.
     """
     id_remap: Dict[str, str] = {aid: aid for aid in tracker.profiles}
+    events: List[dict] = []
 
     while len(tracker.profiles) >= 2:
         ids = list(tracker.profiles.keys())
@@ -143,6 +146,20 @@ def merge_similar_profiles(
             if current_target == drop_id:
                 id_remap[original_id] = keep_id
 
+        events.append(
+            {
+                "merged_from": [drop_id],
+                "kept": keep_id,
+                "similarity": float(best_sim),
+                "sample_counts": {
+                    "kept": keep.sample_count,
+                    "dropped": drop.sample_count,
+                },
+            }
+        )
+
+    if return_events:
+        return id_remap, events
     return id_remap
 
 
@@ -171,8 +188,10 @@ def run_pipeline(
     encoder: EncoderProtocol,
     tracker: AuthorProfileTracker,
     context_window_size: int = 3,
+    stride: int = 1,
     merge_threshold: Optional[float] = 0.85,
     smoother: Optional[SmootherProtocol] = None,
+    progress_callback: Optional[Callable[[float, int, int], None]] = None,
 ) -> dict:
     """Run the full pipeline over one document: segment, encode, match,
     merge, and (optionally) smooth.
@@ -186,6 +205,10 @@ def run_pipeline(
             rather than resetting per document.
         context_window_size: Number of trailing sentences joined into
             each encoded span (mirrors the sliding-window design).
+        stride: Number of sentence positions to advance between encoded
+            windows. ``1`` keeps the original behavior of stepping one
+            sentence at a time; larger values skip over intermediate
+            segments.
         merge_threshold: tau_merge for post-hoc profile consolidation.
             Pass ``None`` (or >= 1.0) to disable merging entirely.
         smoother: Optional object satisfying ``SmootherProtocol``
@@ -195,33 +218,48 @@ def run_pipeline(
 
     Returns:
         Dict with:
-          - ``"assignments"``: list of per-sentence result dicts
-            (``author_id``, ``similarity``, ``is_new_author``,
+          - ``"assignments"``: list of result dicts for each processed
+            window (``author_id``, ``similarity``, ``is_new_author``,
             ``profile_updated``), post-merge and post-smoothing.
           - ``"id_remap"``: the merge remapping applied, for auditing.
           - ``"profiles"``: ``tracker.get_profile_summary()`` after
             merging.
     """
+    if stride <= 0:
+        raise ValueError("stride must be a positive integer")
+
     sentences = split_into_sentences(text)
     assignments: List[dict] = []
 
-    for i, sentence in enumerate(sentences):
+    total_sentences = len(sentences)
+    for i in range(0, total_sentences, stride):
         start = max(0, i - context_window_size + 1)
         window_text = " ".join(sentences[start : i + 1])
         vector, token_count = encoder.encode(window_text)
         result = tracker.step(vector, token_count, position=i)
         assignments.append(result)
+        if progress_callback is not None:
+            processed = min(i + 1, total_sentences)
+            progress = processed / total_sentences if total_sentences else 1.0
+            progress_callback(progress, processed, total_sentences)
 
     id_remap: Dict[str, str] = {aid: aid for aid in tracker.profiles}
+    merge_events: List[dict] = []
     if merge_threshold is not None and merge_threshold < 1.0:
-        id_remap = merge_similar_profiles(tracker, merge_threshold)
+        id_remap, merge_events = merge_similar_profiles(
+            tracker, merge_threshold, return_events=True
+        )
         assignments = apply_id_remap(assignments, id_remap)
 
     if smoother is not None:
         assignments = smoother.smooth(assignments)
 
+    if progress_callback is not None and sentences:
+        progress_callback(1.0, len(sentences), len(sentences))
+
     return {
         "assignments": assignments,
         "id_remap": id_remap,
         "profiles": tracker.get_profile_summary(),
+        "merge_events": merge_events,
     }
