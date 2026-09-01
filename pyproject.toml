@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "deepstylometry",
+    "ipykernel>=7.3.0",
 ]
 
 [project.optional-dependencies]
@@ -49,4 +50,13 @@ torch = [
 torchvision = [
     { index = "pytorch-cu124", extra = "cuda", marker = "sys_platform != 'darwin'" },
     { index = "pytorch-cu124", extra = "cu124", marker = "sys_platform != 'darwin'" },
+]
+
+[dependency-groups]
+server = [
+    "asyncpg>=0.31.0",
+    "fastapi[standard]>=0.141.1",
+    "pgvector>=0.5.0",
+    "python-dotenv>=1.2.3",
+    "uvicorn>=0.52.4",
 ]
