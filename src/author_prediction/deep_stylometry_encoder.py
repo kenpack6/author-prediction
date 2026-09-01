@@ -16,6 +16,7 @@ would not raise an error, it would just produce meaningless vectors.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional, Tuple
 
 import numpy as np
@@ -47,6 +48,23 @@ class DeepStylometryEncoder:
             omitted.
     """
 
+    @staticmethod
+    def _resolve_config_path(config_path: str) -> str:
+        """Resolve config locations relative to the repo/submodule root."""
+        path = Path(config_path)
+        if path.is_absolute():
+            return str(path)
+
+        candidates = [
+            Path.cwd() / path,
+            Path(__file__).resolve().parents[2] / path,
+            Path(__file__).resolve().parents[2] / "DeepStylometry" / path,
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+        return str(Path.cwd() / path)
+
     def __init__(
         self,
         checkpoint_repo: str = "Madjakul/deep-stylometry-modernbert-mean",
@@ -62,9 +80,10 @@ class DeepStylometryEncoder:
             else "cpu"
         )
         self.max_length = max_length
+        self.config_path = self._resolve_config_path(config_path)
 
         checkpoint_path = hf_hub_download(repo_id=checkpoint_repo, filename="last.ckpt")
-        cfg = BaseConfig(mode="test").from_yaml(config_path)
+        cfg = BaseConfig(mode="test").from_yaml(self.config_path)
         self.model = DeepStylometry.load_from_checkpoint(checkpoint_path, cfg=cfg)
         self.model.to(self.device)
         self.model.eval()
