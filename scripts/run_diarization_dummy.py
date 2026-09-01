@@ -27,11 +27,16 @@ tracker = AuthorProfileTracker(
 )
 encoder = HashingDummyEncoder(dim=64, seed=0)
 
+# Use a larger stride to skip intermediate windows in the dummy run;
+# stride=1 is the original behavior, stride=2/3/5 gives a coarser scan.
+stride = 2
+
 result = run_pipeline(
     text,
     encoder=encoder,
     tracker=tracker,
     context_window_size=20,
+    stride=stride,
     merge_threshold=0.5,
 )
 

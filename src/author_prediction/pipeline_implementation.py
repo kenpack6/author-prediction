@@ -171,6 +171,7 @@ def run_pipeline(
     encoder: EncoderProtocol,
     tracker: AuthorProfileTracker,
     context_window_size: int = 3,
+    stride: int = 1,
     merge_threshold: Optional[float] = 0.85,
     smoother: Optional[SmootherProtocol] = None,
 ) -> dict:
@@ -186,6 +187,10 @@ def run_pipeline(
             rather than resetting per document.
         context_window_size: Number of trailing sentences joined into
             each encoded span (mirrors the sliding-window design).
+        stride: Number of sentence positions to advance between encoded
+            windows. ``1`` keeps the original behavior of stepping one
+            sentence at a time; larger values skip over intermediate
+            segments.
         merge_threshold: tau_merge for post-hoc profile consolidation.
             Pass ``None`` (or >= 1.0) to disable merging entirely.
         smoother: Optional object satisfying ``SmootherProtocol``
@@ -195,17 +200,20 @@ def run_pipeline(
 
     Returns:
         Dict with:
-          - ``"assignments"``: list of per-sentence result dicts
-            (``author_id``, ``similarity``, ``is_new_author``,
+          - ``"assignments"``: list of result dicts for each processed
+            window (``author_id``, ``similarity``, ``is_new_author``,
             ``profile_updated``), post-merge and post-smoothing.
           - ``"id_remap"``: the merge remapping applied, for auditing.
           - ``"profiles"``: ``tracker.get_profile_summary()`` after
             merging.
     """
+    if stride <= 0:
+        raise ValueError("stride must be a positive integer")
+
     sentences = split_into_sentences(text)
     assignments: List[dict] = []
 
-    for i, sentence in enumerate(sentences):
+    for i in range(0, len(sentences), stride):
         start = max(0, i - context_window_size + 1)
         window_text = " ".join(sentences[start : i + 1])
         vector, token_count = encoder.encode(window_text)

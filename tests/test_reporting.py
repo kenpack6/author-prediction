@@ -170,6 +170,27 @@ class TestRunPipeline:
 
         assert len(result["assignments"]) == 3
 
+    def test_stride_skips_intermediate_windows(self):
+        text = "One. Two. Three. Four. Five."
+        tracker = AuthorProfileTracker(sim_threshold=0.3, ema_alpha=0.8)
+        encoder = HashingDummyEncoder(dim=16, seed=0)
+
+        result = run_pipeline(text, encoder, tracker, context_window_size=2, stride=2)
+
+        assert len(result["assignments"]) == 3
+        assert [record["author_id"] for record in result["assignments"]] == [
+            "Author_1",
+            "Author_2",
+            "Author_3",
+        ]
+
+    def test_stride_must_be_positive(self):
+        tracker = AuthorProfileTracker()
+        encoder = HashingDummyEncoder(dim=16, seed=0)
+
+        with pytest.raises(ValueError, match="stride must be a positive integer"):
+            run_pipeline("One. Two.", encoder, tracker, stride=0)
+
     def test_empty_text_returns_empty_assignments(self):
         tracker = AuthorProfileTracker()
         encoder = HashingDummyEncoder(dim=16, seed=0)

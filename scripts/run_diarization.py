@@ -33,11 +33,16 @@ tracker = AuthorProfileTracker(
 )
 encoder = DeepStylometryEncoder()
 
+# Advance the sliding window by 1 sentence at a time by default. Increase
+# ``stride`` to skip intermediate windows for a coarser scan over the text.
+stride = 5
+
 result = run_pipeline(
     text,
     encoder=encoder,
     tracker=tracker,
     context_window_size=20,
+    stride=stride,
     merge_threshold=0.93,  # kept above sim_threshold -- see pipeline_implementation.py
 )
 
