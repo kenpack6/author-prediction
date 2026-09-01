@@ -9,18 +9,12 @@ function RootComponent() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
       <nav className="border-b border-slate-800 bg-slate-950 p-4">
-        <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto w-full flex gap-4 text-sm font-semibold">
+        <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto w-full flex items-center">
           <Link
             to="/"
-            className="text-slate-400 hover:text-slate-100 [&.active]:text-indigo-400 [&.active]:font-bold"
+            className="text-lg font-bold tracking-tight text-slate-100 hover:text-white transition"
           >
-            Home
-          </Link>
-          <Link
-            to="/about"
-            className="text-slate-400 hover:text-slate-100 [&.active]:text-indigo-400 [&.active]:font-bold"
-          >
-            About
+            Stylos
           </Link>
         </div>
       </nav>
