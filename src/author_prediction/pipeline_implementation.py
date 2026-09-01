@@ -38,7 +38,7 @@ resemble each other through a distant intermediate.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -191,6 +191,7 @@ def run_pipeline(
     stride: int = 1,
     merge_threshold: Optional[float] = 0.85,
     smoother: Optional[SmootherProtocol] = None,
+    progress_callback: Optional[Callable[[float, int, int], None]] = None,
 ) -> dict:
     """Run the full pipeline over one document: segment, encode, match,
     merge, and (optionally) smooth.
@@ -230,12 +231,17 @@ def run_pipeline(
     sentences = split_into_sentences(text)
     assignments: List[dict] = []
 
-    for i in range(0, len(sentences), stride):
+    total_sentences = len(sentences)
+    for i in range(0, total_sentences, stride):
         start = max(0, i - context_window_size + 1)
         window_text = " ".join(sentences[start : i + 1])
         vector, token_count = encoder.encode(window_text)
         result = tracker.step(vector, token_count, position=i)
         assignments.append(result)
+        if progress_callback is not None:
+            processed = min(i + 1, total_sentences)
+            progress = processed / total_sentences if total_sentences else 1.0
+            progress_callback(progress, processed, total_sentences)
 
     id_remap: Dict[str, str] = {aid: aid for aid in tracker.profiles}
     merge_events: List[dict] = []
@@ -247,6 +253,9 @@ def run_pipeline(
 
     if smoother is not None:
         assignments = smoother.smooth(assignments)
+
+    if progress_callback is not None and sentences:
+        progress_callback(1.0, len(sentences), len(sentences))
 
     return {
         "assignments": assignments,

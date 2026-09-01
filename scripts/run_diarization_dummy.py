@@ -12,11 +12,30 @@ from author_prediction.dummy_encoder import HashingDummyEncoder
 from author_prediction.pipeline_implementation import run_pipeline
 from author_prediction.profile_tracker import AuthorProfileTracker
 from author_prediction.reporting import format_run_summary, summarize_run
+from author_prediction.segmenter import split_into_sentences
 
 DATA_PATH = "src/author_prediction/data/data_orth.txt"
+MAX_CHARS: int | None = 30000
+MAX_SENTENCES: int | None = 100
 
-with open(DATA_PATH, "r", encoding="utf-8") as f:
-    text = f.read()
+
+def load_limited_text(path: str, max_chars: int | None = None, max_sentences: int | None = None) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        text = f.read()
+    if max_chars is not None and max_chars > 0:
+        text = text[:max_chars]
+    if max_sentences is not None and max_sentences > 0:
+        sentences = split_into_sentences(text)
+        text = " ".join(sentences[:max_sentences])
+    return text
+
+
+def print_progress(progress: float, processed: int, total: int) -> None:
+    pct = int(progress * 100)
+    print(f"Processing text: {pct}% ({processed}/{total} sentences)", end="\r")
+
+
+text = load_limited_text(DATA_PATH, max_chars=MAX_CHARS, max_sentences=MAX_SENTENCES)
 
 tracker = AuthorProfileTracker(
     sim_threshold=0.30,  # much lower than the real-model default -- hashed
@@ -38,7 +57,10 @@ result = run_pipeline(
     context_window_size=20,
     stride=stride,
     merge_threshold=0.5,
+    progress_callback=print_progress,
 )
+
+print("\n")
 
 summary = summarize_run(result)
 print(format_run_summary(summary))

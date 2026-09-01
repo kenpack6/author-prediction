@@ -2,33 +2,46 @@
 (segmenter -> DeepStylometryEncoder -> AuthorProfileTracker -> merge),
 and print a detailed run summary.
 
-This replaces the old OnlineAuthorDiarizer-based script: sentence
+NOTE: This replaces the old OnlineAuthorDiarizer-based script: sentence
 splitting, encoding, matching, and merging are now separate, individually
 testable pieces (segmenter.py, deep_stylometry_encoder.py,
 profile_tracker.py, pipeline_implementation.py) tied together by
 run_pipeline().
 
-NOTE: DeepStylometryEncoder has not been run or verified in this
-environment (no network access to Hugging Face, package not installed
-here). Run this script yourself; see scripts/run_diarization_dummy.py
-for a version that swaps in a dependency-free fake encoder if you want
-to sanity-check the pipeline plumbing (segmentation, matching, merging,
-reporting) independently of the real model.
 """
 
 from author_prediction.deep_stylometry_encoder import DeepStylometryEncoder
 from author_prediction.pipeline_implementation import run_pipeline
 from author_prediction.profile_tracker import AuthorProfileTracker
 from author_prediction.reporting import format_run_summary, summarize_run
+from author_prediction.segmenter import split_into_sentences
 
-DATA_PATH = "src/author_prediction/data/data_orth.txt"
+DATA_PATH = "src/author_prediction/data/bookofmormon.txt"
+MAX_CHARS: int | None = 100000
+MAX_SENTENCES: int | None = None
 
-with open(DATA_PATH, "r", encoding="utf-8") as f:
-    text = f.read()
+
+def load_limited_text(path: str, max_chars: int | None = None, max_sentences: int | None = None) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        text = f.read()
+    if max_chars is not None and max_chars > 0:
+        text = text[:max_chars]
+    if max_sentences is not None and max_sentences > 0:
+        sentences = split_into_sentences(text)
+        text = " ".join(sentences[:max_sentences])
+    return text
+
+
+def print_progress(progress: float, processed: int, total: int) -> None:
+    pct = int(progress * 100)
+    print(f"Processing text: {pct}% ({processed}/{total} sentences)", end="\r")
+
+
+text = load_limited_text(DATA_PATH, max_chars=MAX_CHARS, max_sentences=MAX_SENTENCES)
 
 tracker = AuthorProfileTracker(
-    sim_threshold=0.96,
-    ema_alpha=0.90,
+    sim_threshold=0.94,
+    ema_alpha=0.22,
     min_tokens_for_update=15,
 )
 encoder = DeepStylometryEncoder()
@@ -43,8 +56,11 @@ result = run_pipeline(
     tracker=tracker,
     context_window_size=20,
     stride=stride,
-    merge_threshold=0.93,  # kept above sim_threshold -- see pipeline_implementation.py
+    merge_threshold=0.95,  # kept above sim_threshold -- see pipeline_implementation.py
+    progress_callback=print_progress,
 )
+
+print("\n")
 
 summary = summarize_run(result)
 print(format_run_summary(summary))
