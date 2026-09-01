@@ -54,7 +54,7 @@ torchvision = [
 [dependency-groups]
 server = [
     "asyncpg>=0.31.0",
-    "fastapi>=0.141.1",
+    "fastapi[standard]>=0.141.1",
     "python-dotenv>=1.2.3",
     "uvicorn>=0.52.4",
 ]
