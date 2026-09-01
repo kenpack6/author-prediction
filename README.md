@@ -79,7 +79,7 @@ The `AuthorProfileTracker` maintains a dictionary of author profiles. Each profi
 - a `last_seen` timestamp
 
 The centroid represents the current best estimate of that author’s style vector.
-
+```mermaid
 flowchart TD
     User["User"] -->|Uploads text| FE["React Frontend"]
     FE -->|HTTP request| API["FastAPI Backend"]
@@ -101,7 +101,7 @@ flowchart TD
 
     Merge --> AuthorDB
     NewAuthor --> AuthorDB
-    
+```
 
 ## Mathematical formulation
 
