@@ -68,7 +68,7 @@ class InferenceWorker(mp.Process):
     async def load_job(self, job: InferenceJob):
         async with self.db_pool.acquire() as conn:
             authors_raw = await conn.fetch("""
-                SELECT id, centroid FROM authors
+                SELECT id, centroid, samples FROM authors
                 WHERE project = $1
                 """, job.project_id)
             source_text = await conn.fetchval("""
@@ -76,7 +76,7 @@ class InferenceWorker(mp.Process):
                 WHERE id = $1 AND project = $2""", job.source_id, job.project_id)
         authors = {f"db_{author['id']}" : AuthorProfile(f"db_{author['id']}",
                                     author["centroid"].to_numpy(),
-                                    sample_count=0) for author in authors_raw}
+                                    sample_count=author['samples']) for author in authors_raw}
         return authors, source_text
 
     async def run_inference(self, job: InferenceJob):
@@ -107,16 +107,17 @@ class InferenceWorker(mp.Process):
                 if location == 'db':
                     await conn.execute("""
                     UPDATE authors
-                    SET centroid = $1
+                    SET centroid = $1,
+                        samples = $4
                         WHERE id = $2
                             AND project = $3""",
-                    profile.centroid, int(num), job.project_id)
+                    profile.centroid, int(num), job.project_id, profile.sample_count)
                 else:
                     new_id = await conn.fetchval("""
-                    INSERT INTO authors (centroid, project)
-                        VALUES ($1, $2)
+                    INSERT INTO authors (centroid, project, samples)
+                        VALUES ($1, $2, $3)
                             RETURNING id""",
-                    profile.centroid, job.project_id)
+                    profile.centroid, job.project_id, profile.sample_count)
                     new_profiles[profile_id] = new_id
 
             for event in result['merge_events']:
