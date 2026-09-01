@@ -367,9 +367,9 @@ And it came to pass that thus far I and my father had kept the commandments wher
         print(" -", s)
 
     windows = sliding_door(sentences, window_size=20, step=5)
-    print(f"\n{len(windows)} sliding-door windows:")
+    print(f"\n{len(windows)} sliding windows:")
     for w in windows:
         print(f" window {w.index} [{w.start_idx}:{w.end_idx}]: {w.text[:60]}...")
 
-    print(f"\nTokenized sentence[0] (merged): {tokenize(sentences[3])}")
+    print(f"\nTokenized sentence[0] (merged): {tokenize(sentences[0])}")
     print(f"Tokenized sentence[0] (unmerged): {tokenize(sentences[0], merge_abbreviations=False)}")
