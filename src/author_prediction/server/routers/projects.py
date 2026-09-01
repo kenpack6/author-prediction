@@ -1,5 +1,3 @@
-from typing import Any
-
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -27,7 +25,7 @@ class ProjectResponse(BaseModel):
 
 
 @router.get("/", response_model=list[ProjectResponse])
-async def list_projects(db: DbConn) -> list[dict[str, Any]]:
+async def list_projects(db: DbConn) -> list[ProjectResponse]:
     """List all projects with sources count."""
     rows = await db.fetch(
         """
@@ -38,11 +36,11 @@ async def list_projects(db: DbConn) -> list[dict[str, Any]]:
         ORDER BY p.id
         """
     )
-    return [dict(row) for row in rows]
+    return [ProjectResponse.model_validate(dict(row)) for row in rows]
 
 
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-async def create_project(project: ProjectCreate, db: DbConn) -> dict[str, Any]:
+async def create_project(project: ProjectCreate, db: DbConn) -> ProjectResponse:
     """Create a new project."""
     row = await db.fetchrow(
         "INSERT INTO projects (name) VALUES ($1) RETURNING id, name",
@@ -52,11 +50,11 @@ async def create_project(project: ProjectCreate, db: DbConn) -> dict[str, Any]:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create project")
     result = dict(row)
     result["sources"] = 0
-    return result
+    return ProjectResponse.model_validate(result)
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
-async def get_project(project_id: int, db: DbConn) -> dict[str, Any]:
+async def get_project(project_id: int, db: DbConn) -> ProjectResponse:
     """Get a project by ID with sources count."""
     row = await db.fetchrow(
         """
@@ -70,13 +68,13 @@ async def get_project(project_id: int, db: DbConn) -> dict[str, Any]:
     )
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    return dict(row)
+    return ProjectResponse.model_validate(dict(row))
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)
 async def update_project(
     project_id: int, project_update: ProjectUpdate, db: DbConn
-) -> dict[str, Any]:
+) -> ProjectResponse:
     """Update a project by ID."""
     row = await db.fetchrow(
         """
@@ -96,7 +94,7 @@ async def update_project(
     )
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    return dict(row)
+    return ProjectResponse.model_validate(dict(row))
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -105,3 +103,4 @@ async def delete_project(project_id: int, db: DbConn) -> None:
     result = await db.execute("DELETE FROM projects WHERE id = $1", project_id)
     if result == "DELETE 0":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
