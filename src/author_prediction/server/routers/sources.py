@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from author_prediction.server.dependencies import DbConn
+from author_prediction.server.dependencies import DbConn, Worker
 
 router = APIRouter(prefix="/{project_id}/sources", tags=["sources"])
 
@@ -43,7 +43,7 @@ async def list_sources(project_id: int, db: DbConn) -> list[SourceListItemRespon
 
 
 @router.post("/", response_model=SourceResponse, status_code=status.HTTP_201_CREATED)
-async def create_source(project_id: int, source: SourceCreate, db: DbConn) -> SourceResponse:
+async def create_source(project_id: int, source: SourceCreate, db: DbConn, worker: Worker) -> SourceResponse:
     """Create a new source under a project."""
     row = await db.fetchrow(
         """
@@ -57,6 +57,7 @@ async def create_source(project_id: int, source: SourceCreate, db: DbConn) -> So
     )
     if not row:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create source")
+    worker.put(row['id'], row['project'])
     return SourceResponse.model_validate(dict(row))
 
 

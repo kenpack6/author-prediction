@@ -1,7 +1,9 @@
-from typing import Annotated, AsyncIterator
+from typing import Annotated, AsyncIterator, AsyncGenerator
 
 import asyncpg
 from fastapi import Depends, Request
+
+from author_prediction.server.worker import InferenceWorker
 
 
 async def get_db(request: Request) -> AsyncIterator[asyncpg.Connection]:
@@ -12,3 +14,8 @@ async def get_db(request: Request) -> AsyncIterator[asyncpg.Connection]:
 
 
 DbConn = Annotated[asyncpg.Connection, Depends(get_db)]
+
+async def get_worker(request: Request) -> AsyncGenerator[asyncpg.Connection, None]:
+    yield request.app.state.worker
+
+Worker = Annotated[InferenceWorker, Depends(get_worker)]
