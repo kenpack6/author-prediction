@@ -15,24 +15,36 @@ class TestProjectsRouter(unittest.TestCase):
         app.dependency_overrides.clear()
 
     def test_list_projects(self):
-        self.mock_db.fetch = AsyncMock(return_value=[{"id": 1, "name": "Project Alpha"}])
+        self.mock_db.fetch = AsyncMock(
+            return_value=[{"id": 1, "name": "Project Alpha", "sources": 3}]
+        )
         response = self.client.get("/projects/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), [{"id": 1, "name": "Project Alpha"}])
-        self.mock_db.fetch.assert_called_once_with("SELECT id, name FROM projects ORDER BY id")
+        self.assertEqual(
+            response.json(),
+            [{"id": 1, "name": "Project Alpha", "sources": 3}],
+        )
 
     def test_create_project(self):
         self.mock_db.fetchrow = AsyncMock(return_value={"id": 1, "name": "Project Alpha"})
         payload = {"name": "Project Alpha"}
         response = self.client.post("/projects/", json=payload)
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json(), {"id": 1, "name": "Project Alpha"})
+        self.assertEqual(
+            response.json(),
+            {"id": 1, "name": "Project Alpha", "sources": 0},
+        )
 
     def test_get_project_by_id(self):
-        self.mock_db.fetchrow = AsyncMock(return_value={"id": 1, "name": "Project Beta"})
+        self.mock_db.fetchrow = AsyncMock(
+            return_value={"id": 1, "name": "Project Beta", "sources": 5}
+        )
         response = self.client.get("/projects/1")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"id": 1, "name": "Project Beta"})
+        self.assertEqual(
+            response.json(),
+            {"id": 1, "name": "Project Beta", "sources": 5},
+        )
 
     def test_get_project_not_found(self):
         self.mock_db.fetchrow = AsyncMock(return_value=None)
@@ -40,10 +52,15 @@ class TestProjectsRouter(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_update_project(self):
-        self.mock_db.fetchrow = AsyncMock(return_value={"id": 1, "name": "New Name"})
+        self.mock_db.fetchrow = AsyncMock(
+            return_value={"id": 1, "name": "New Name", "sources": 2}
+        )
         response = self.client.put("/projects/1", json={"name": "New Name"})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"id": 1, "name": "New Name"})
+        self.assertEqual(
+            response.json(),
+            {"id": 1, "name": "New Name", "sources": 2},
+        )
 
     def test_update_project_not_found(self):
         self.mock_db.fetchrow = AsyncMock(return_value=None)

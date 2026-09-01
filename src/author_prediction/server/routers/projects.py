@@ -4,8 +4,10 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from author_prediction.server.dependencies import DbConn
+from author_prediction.server.routers.sources import router as sources_router
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+router.include_router(sources_router)
 
 
 class ProjectCreate(BaseModel):
@@ -19,14 +21,23 @@ class ProjectUpdate(BaseModel):
 class ProjectResponse(BaseModel):
     id: int
     name: str
+    sources: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
 
 @router.get("/", response_model=list[ProjectResponse])
 async def list_projects(db: DbConn) -> list[dict[str, Any]]:
-    """List all projects."""
-    rows = await db.fetch("SELECT id, name FROM projects ORDER BY id")
+    """List all projects with sources count."""
+    rows = await db.fetch(
+        """
+        SELECT p.id, p.name, COUNT(s.id)::int AS sources
+        FROM projects p
+        LEFT JOIN sources s ON s.project = p.id
+        GROUP BY p.id, p.name
+        ORDER BY p.id
+        """
+    )
     return [dict(row) for row in rows]
 
 
@@ -39,14 +50,22 @@ async def create_project(project: ProjectCreate, db: DbConn) -> dict[str, Any]:
     )
     if not row:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create project")
-    return dict(row)
+    result = dict(row)
+    result["sources"] = 0
+    return result
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(project_id: int, db: DbConn) -> dict[str, Any]:
-    """Get a project by ID."""
+    """Get a project by ID with sources count."""
     row = await db.fetchrow(
-        "SELECT id, name FROM projects WHERE id = $1",
+        """
+        SELECT p.id, p.name, COUNT(s.id)::int AS sources
+        FROM projects p
+        LEFT JOIN sources s ON s.project = p.id
+        WHERE p.id = $1
+        GROUP BY p.id, p.name
+        """,
         project_id,
     )
     if not row:
@@ -61,10 +80,16 @@ async def update_project(
     """Update a project by ID."""
     row = await db.fetchrow(
         """
-        UPDATE projects
-        SET name = $1
-        WHERE id = $2
-        RETURNING id, name
+        WITH updated AS (
+            UPDATE projects
+            SET name = $1
+            WHERE id = $2
+            RETURNING id, name
+        )
+        SELECT u.id, u.name, COUNT(s.id)::int AS sources
+        FROM updated u
+        LEFT JOIN sources s ON s.project = u.id
+        GROUP BY u.id, u.name
         """,
         project_update.name,
         project_id,

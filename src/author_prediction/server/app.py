@@ -28,6 +28,8 @@ app = FastAPI(title="Author Prediction API", lifespan=lifespan)
 app.include_router(projects_router)
 
 
+
+
 @app.get("/")
 def read_root() -> dict[str, str]:
     return {"message": "Hello, World!"}
