@@ -73,14 +73,3 @@ async def get_source(project_id: int, source_id: int, db: DbConn) -> SourceRespo
     return SourceResponse.model_validate(dict(row))
 
 
-@router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_source(project_id: int, source_id: int, db: DbConn) -> None:
-    """Delete a source by ID under a project."""
-    result = await db.execute(
-        "DELETE FROM sources WHERE id = $1 AND project = $2",
-        source_id,
-        project_id,
-    )
-    if result == "DELETE 0":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
-

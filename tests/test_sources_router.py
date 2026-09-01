@@ -95,16 +95,7 @@ class TestSourcesRouter(unittest.TestCase):
         response = self.client.get("/projects/10/sources/999")
         self.assertEqual(response.status_code, 404)
 
-    def test_delete_source(self):
-        self.mock_db.execute = AsyncMock(return_value="DELETE 1")
-        response = self.client.delete("/projects/10/sources/1")
-        self.assertEqual(response.status_code, 204)
-
-    def test_delete_source_not_found(self):
-        self.mock_db.execute = AsyncMock(return_value="DELETE 0")
-        response = self.client.delete("/projects/10/sources/999")
-        self.assertEqual(response.status_code, 404)
-
 
 if __name__ == "__main__":
     unittest.main()
+
