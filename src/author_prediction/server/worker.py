@@ -15,10 +15,10 @@ MAX_SENTENCES = None
 
 context_window_size = 20
 stride = 5
-sim_threshold = 0.94
+sim_threshold = 0.96
 ema_alpha = 0.22
 min_tokens_for_update = 15
-merge_threshold = 0.95
+merge_threshold = 0.96
 
 SENTINEL = None
 
@@ -139,7 +139,7 @@ class InferenceWorker(mp.Process):
                                        int(num), job.project_id)
 
             associated_authors = [(*profile['author_id'].split('_'), profile['author_id']) for profile in result['assignments']]
-            associated_authors_ids = [int(num) if loc == 'db' else author_id for loc, num, author_id in associated_authors]
+            associated_authors_ids = [int(num) if loc == 'db' else new_profiles[author_id] for loc, num, author_id in associated_authors]
             await conn.executemany("""
             INSERT INTO source_authors (source, author)
                 VALUES ($1, $2)
