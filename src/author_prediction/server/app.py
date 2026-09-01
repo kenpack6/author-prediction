@@ -7,9 +7,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from author_prediction.server.dependencies import DbConn, get_db
+from author_prediction.server.routers import projects_router
 
 load_dotenv()
-
 
 
 @asynccontextmanager
@@ -25,12 +25,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Author Prediction API", lifespan=lifespan)
+app.include_router(projects_router)
 
 
 @app.get("/")
-async def read_root(db: DbConn) -> dict[str, str]:
-    res = await db.fetchval("SELECT NOW();")
-    return {"message": "Hello, World!", "db_out": str(res)}
+def read_root() -> dict[str, str]:
+    return {"message": "Hello, World!"}
+
 
 
 
