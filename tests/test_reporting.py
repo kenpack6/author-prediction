@@ -37,6 +37,22 @@ class TestMergeSimilarProfiles:
         assert "Author_1" in tracker.profiles
         assert id_remap == {"Author_1": "Author_1", "Author_2": "Author_1"}
 
+    def test_merge_events_are_reported(self):
+        profiles = {
+            "Author_1": AuthorProfile("Author_1", unit([1.0, 0.0]), sample_count=5),
+            "Author_2": AuthorProfile("Author_2", unit([0.99, 0.01]), sample_count=3),
+        }
+        tracker = make_tracker_with_profiles(profiles)
+
+        id_remap, events = merge_similar_profiles(
+            tracker, merge_threshold=0.9, return_events=True
+        )
+
+        assert id_remap == {"Author_1": "Author_1", "Author_2": "Author_1"}
+        assert len(events) == 1
+        assert events[0]["merged_from"] == ["Author_2"]
+        assert events[0]["kept"] == "Author_1"
+
     def test_higher_sample_count_survives(self):
         profiles = {
             "Author_1": AuthorProfile("Author_1", unit([1.0, 0.0]), sample_count=2),

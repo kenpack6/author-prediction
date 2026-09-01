@@ -42,3 +42,11 @@ result = run_pipeline(
 
 summary = summarize_run(result)
 print(format_run_summary(summary))
+
+if result.get("merge_events"):
+    print("\nAuthor merge events:")
+    for event in result["merge_events"]:
+        print(
+            f"  - Merged {event['merged_from']} into {event['kept']} "
+            f"(similarity={event['similarity']:.4f})"
+        )

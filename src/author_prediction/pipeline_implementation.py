@@ -55,7 +55,8 @@ def _author_number(author_id: str) -> int:
 def merge_similar_profiles(
     tracker: AuthorProfileTracker,
     merge_threshold: float,
-) -> Dict[str, str]:
+    return_events: bool = False,
+):
     """Consolidate author profiles whose centroids converged to a similar
     direction, post-hoc.
 
@@ -84,15 +85,17 @@ def merge_similar_profiles(
             been processed with repeated ``tracker.step()`` calls.
         merge_threshold: Cosine similarity (tau_merge) at or above which
             two profiles are considered the same underlying author.
+        return_events: If true, also returns a list of merge events, each
+            containing the surviving author id, the merged-from author id,
+            the pair similarity, and the sample counts involved.
 
     Returns:
-        id_remap: mapping from every original author_id (as it existed
-        before this call) to the author_id it ends up under after
-        merging. Surviving authors map to themselves. Use
-        :func:`apply_id_remap` to relabel already-collected ``step()``
-        results with this.
+        If ``return_events`` is false: mapping from every original
+        author_id to the author_id it ends up under after merging.
+        If ``return_events`` is true: ``(id_remap, events)``.
     """
     id_remap: Dict[str, str] = {aid: aid for aid in tracker.profiles}
+    events: List[dict] = []
 
     while len(tracker.profiles) >= 2:
         ids = list(tracker.profiles.keys())
@@ -143,6 +146,20 @@ def merge_similar_profiles(
             if current_target == drop_id:
                 id_remap[original_id] = keep_id
 
+        events.append(
+            {
+                "merged_from": [drop_id],
+                "kept": keep_id,
+                "similarity": float(best_sim),
+                "sample_counts": {
+                    "kept": keep.sample_count,
+                    "dropped": drop.sample_count,
+                },
+            }
+        )
+
+    if return_events:
+        return id_remap, events
     return id_remap
 
 
@@ -221,8 +238,11 @@ def run_pipeline(
         assignments.append(result)
 
     id_remap: Dict[str, str] = {aid: aid for aid in tracker.profiles}
+    merge_events: List[dict] = []
     if merge_threshold is not None and merge_threshold < 1.0:
-        id_remap = merge_similar_profiles(tracker, merge_threshold)
+        id_remap, merge_events = merge_similar_profiles(
+            tracker, merge_threshold, return_events=True
+        )
         assignments = apply_id_remap(assignments, id_remap)
 
     if smoother is not None:
@@ -232,4 +252,5 @@ def run_pipeline(
         "assignments": assignments,
         "id_remap": id_remap,
         "profiles": tracker.get_profile_summary(),
+        "merge_events": merge_events,
     }
